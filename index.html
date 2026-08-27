@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Tạo QR Vĩnh Viễn</title>
+<style>
+  :root{
+    --navy:#16233F; --navy-deep:#0E1830; --cream:#FAF5E9; --cream-dim:#EFE7D6;
+    --ink:#2A2015; --amber:#D9A441; --pin:#B5462F; --green:#2f7a3d; --line:rgba(250,245,233,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;
+    background:radial-gradient(circle at 15% 10%, rgba(217,164,65,0.10), transparent 45%),
+      linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+    color:var(--cream);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
+  .serif{font-family:'Times New Roman',Times,serif;}
+  .eyebrow{letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:var(--amber);font-weight:600;}
+  h1{font-family:'Times New Roman',Times,serif;font-size:28px;margin:6px 0 4px;font-weight:700;}
+  p.lead{color:var(--cream-dim);font-size:14px;line-height:1.6;max-width:560px;margin:0 auto;}
+  .screen{max-width:880px;margin:0 auto;padding:40px 20px 70px;}
+  .hidden{display:none !important;}
+  .center{text-align:center;}
+
+  .card{background:var(--cream);color:var(--ink);border-radius:10px;padding:24px;margin-top:22px;box-shadow:0 10px 26px rgba(0,0,0,.28);}
+  label.field-label{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7a6c50;margin-bottom:6px;}
+  input[type=text], input[type=url]{width:100%;padding:13px 14px;border:1px solid #d9cdae;border-radius:6px;font-size:16px;background:#fff;color:var(--ink);}
+  input:focus{outline:2px solid var(--amber);border-color:var(--amber);}
+  .field{margin-bottom:16px;}
+  .field .hint{font-size:11.5px;color:#9a8d70;margin-top:5px;}
+  .prefix-input{display:flex;align-items:stretch;}
+  .prefix-input .prefix{display:flex;align-items:center;padding:0 10px;background:#efe6d0;border:1px solid #d9cdae;border-right:none;border-radius:6px 0 0 6px;font-size:12.5px;color:#7a6c50;white-space:nowrap;max-width:45%;overflow:hidden;text-overflow:ellipsis;}
+  .prefix-input input{border-radius:0 6px 6px 0;}
+
+  .btn{border:none;border-radius:6px;font-weight:700;font-size:14.5px;cursor:pointer;padding:13px 18px;font-family:inherit;}
+  .btn-primary{background:var(--pin);color:#fff;width:100%;}
+  .btn-primary:hover{filter:brightness(1.1);}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+  .btn-secondary{background:var(--navy);color:#fff;}
+  .btn-ghost{background:none;border:1px solid #d9cdae;color:#5b5040;}
+  .btn-ghost:hover{border-color:var(--amber);color:var(--amber);}
+  .btn-danger{background:none;border:1px solid rgba(181,70,47,.4);color:var(--pin);}
+  .btn-danger:hover{background:rgba(181,70,47,.08);}
+  .btn-sm{padding:8px 12px;font-size:12.5px;border-radius:5px;}
+
+  #formStatus{font-size:12.5px;margin-top:10px;min-height:16px;color:#7a6c50;}
+  .ok{color:var(--green);font-weight:600;}
+  .err{color:var(--pin);font-weight:600;}
+
+  #resultCard{display:none;}
+  .result-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+  .result-qr{background:#fff;padding:10px;border-radius:8px;box-shadow:0 6px 16px rgba(0,0,0,.2);cursor:pointer;flex-shrink:0;}
+  .result-qr img{display:block;width:150px;height:150px;}
+  .result-info{flex:1;min-width:220px;}
+  .result-link{font-size:14px;word-break:break-all;background:#fffdf7;border:1px solid #e6dbc0;border-radius:6px;padding:10px 12px;margin:8px 0;color:var(--navy);font-weight:600;}
+  .result-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+
+  .list-title{display:flex;justify-content:space-between;align-items:center;margin:34px 0 4px;}
+  .list-title h2{font-family:'Times New Roman',Times,serif;font-size:19px;margin:0;color:var(--cream);}
+  .list-title span{font-size:12px;color:var(--cream-dim);}
+  .empty-list{color:var(--cream-dim);font-size:13.5px;text-align:center;padding:30px 10px;border:1px dashed var(--line);border-radius:10px;margin-top:14px;}
+
+  .link-item{background:var(--cream);color:var(--ink);border-radius:8px;padding:16px 18px;margin-top:12px;box-shadow:0 6px 16px rgba(0,0,0,.22);display:flex;gap:16px;}
+  .link-item .thumb{flex-shrink:0;cursor:pointer;}
+  .link-item .thumb img{width:64px;height:64px;border-radius:5px;box-shadow:0 3px 8px rgba(0,0,0,.2);}
+  .link-item .body{flex:1;min-width:0;}
+  .link-item .code-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  .link-item .code{font-weight:800;color:var(--pin);font-size:14.5px;letter-spacing:.02em;}
+  .link-item .clicks{font-size:11px;color:#9a8d70;background:#efe6d0;padding:2px 8px;border-radius:10px;}
+  .link-item .edit-row{display:flex;gap:8px;margin-top:6px;}
+  .link-item .edit-row input{flex:1;padding:9px 10px;font-size:13.5px;border:1px solid #d9cdae;border-radius:5px;}
+  .link-item .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .link-item .save-hint{font-size:11.5px;margin-top:5px;min-height:14px;}
+
+  #qrModal{position:fixed;inset:0;background:rgba(10,14,26,0.96);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:60;padding:24px;}
+  #qrModal.show{display:flex;}
+  #qrModal .qrbox{background:#fff;padding:24px;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.5);}
+  #qrModal img{width:min(70vw,70vh);height:min(70vw,70vh);display:block;}
+  #qrModal .modal-link{color:var(--cream-dim);font-size:13px;margin-top:16px;word-break:break-all;max-width:400px;text-align:center;}
+  #qrModal .closev{position:absolute;bottom:24px;right:24px;}
+
+  #redirecting{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+  .spinner{width:44px;height:44px;border:4px solid rgba(250,245,233,0.2);border-top-color:var(--amber);border-radius:50%;animation:spin 0.9s linear infinite;margin-bottom:18px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #redirNotFound{display:none;}
+
+  #configWarning{position:fixed;inset:0;background:var(--navy-deep);color:var(--cream);display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;z-index:100;}
+  #configWarning .box{max-width:480px;}
+  #configWarning code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:4px;}
+</style>
+</head>
+<body>
+
+<!-- Nếu Firestore chưa bật hoặc rules chưa cho phép, app sẽ hiện cảnh báo này -->
+<div id="configWarning" class="hidden">
+  <div class="box">
+    <h1 style="font-family:-apple-system,sans-serif;">Chưa kết nối được Firebase</h1>
+    <p>Kiểm tra lại: (1) đã bật <b>Firestore Database</b> trong Firebase Console cho project, (2) <b>Security rules</b> đã cho phép đọc/ghi collection <code>qrlinks</code>, (3) đúng thông tin trong <code>firebaseConfig</code>. Mở Console trình duyệt (F12) để xem lỗi chi tiết.</p>
+  </div>
+</div>
+
+<!-- Màn hình chuyển hướng khi có ai quét QR (URL có ?r=MÃ) -->
+<div id="redirecting" class="hidden">
+  <div id="redirLoading">
+    <div class="spinner"></div>
+    <p class="lead">Đang chuyển đến liên kết…</p>
+  </div>
+  <div id="redirNotFound">
+    <h1>Không tìm thấy liên kết</h1>
+    <p class="lead">Mã QR này không tồn tại hoặc đã bị xoá.</p>
+    <a class="btn btn-secondary" style="display:inline-block;margin-top:16px;text-decoration:none;" href="javascript:void(0)" onclick="goHome()">Về trang tạo QR</a>
+  </div>
+</div>
+
+<!-- Màn hình chính: tạo QR + danh sách quản lý -->
+<div id="app" class="screen hidden">
+  <div class="center">
+    <div class="eyebrow">QR vĩnh viễn</div>
+    <h1>Nhập link — nhận mã QR không bao giờ đổi</h1>
+    <p class="lead">Dán liên kết cần mở, bấm tạo. Mã QR sinh ra là cố định vĩnh viễn — sau này nếu anh đổi link đích, chỉ cần sửa lại ở đây, QR không cần in lại vì nó luôn trỏ về đúng liên kết mới nhất.</p>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label class="field-label">Liên kết cần mở khi quét</label>
+      <input type="url" id="targetUrl" placeholder="https://vidu.com/trang-can-mo" autocomplete="off">
+      <div class="hint">Ví dụ: link Google Drive, Zalo, Facebook, trang web, form khảo sát…</div>
+    </div>
+    <div class="field">
+      <label class="field-label">Mã ngắn (tuỳ chọn)</label>
+      <div class="prefix-input">
+        <span class="prefix" id="prefixLabel">?r=</span>
+        <input type="text" id="customCode" placeholder="Để trống sẽ tự sinh ngẫu nhiên" autocomplete="off" maxlength="40">
+      </div>
+      <div class="hint">Chỉ dùng chữ, số, gạch ngang, gạch dưới. Để trống nếu không cần nhớ mã.</div>
+    </div>
+    <button class="btn btn-primary" id="createBtn" onclick="createLink()">Tạo QR vĩnh viễn</button>
+    <div id="formStatus"></div>
+  </div>
+
+  <div class="card" id="resultCard">
+    <div class="result-row">
+      <div class="result-qr" onclick="openQrModal(document.getElementById('resultQrImg').src, document.getElementById('resultLinkText').textContent)">
+        <img id="resultQrImg" alt="QR code">
+      </div>
+      <div class="result-info">
+        <div class="eyebrow" style="color:var(--pin);">Đã tạo thành công</div>
+        <div class="result-link" id="resultLinkText"></div>
+        <div class="result-actions">
+          <button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById('resultLinkText').textContent, this)">Sao chép liên kết</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadQr(document.getElementById('resultQrImg').src, document.getElementById('resultCode').textContent)">Tải ảnh QR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <span id="resultCode" class="hidden"></span>
+
+  <div class="list-title">
+    <h2>Các QR đã tạo</h2>
+    <span id="listCount"></span>
+  </div>
+  <div id="listWrap"></div>
+  <div class="empty-list hidden" id="emptyList">Chưa có QR nào. Tạo cái đầu tiên ở khung phía trên.</div>
+</div>
+
+<div id="qrModal">
+  <div class="qrbox"><img id="qrModalImg" alt="QR code lớn"></div>
+  <div class="modal-link" id="qrModalLink"></div>
+  <button class="btn btn-ghost closev" onclick="closeQrModal()">Đóng ✕</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import {
+  getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, increment, serverTimestamp,
+  collection, onSnapshot, query, orderBy
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+/* ============================================================
+   THÔNG TIN DỰ ÁN FIREBASE
+   (Lấy từ: Firebase Console > Project settings > Your apps > Web app)
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCj1cHTD1EQQM6iZBgVbRxVnbDzYhF0bVQ",
+  authDomain: "tao-qr-1af67.firebaseapp.com",
+  projectId: "tao-qr-1af67",
+  storageBucket: "tao-qr-1af67.firebasestorage.app",
+  messagingSenderId: "931729342987",
+  appId: "1:931729342987:web:34426640810e6813213d0e"
+};
+
+let db = null;
+try{
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+}catch(e){
+  console.error(e);
+  document.getElementById('configWarning').classList.remove('hidden');
+}
+
+const COLLECTION = 'qrlinks';
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; // bỏ ký tự dễ nhầm 0/O/1/l/I
+
+function randCode(len){
+  let s = '';
+  for(let i=0;i<len;i++) s += CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];
+  return s;
+}
+function sanitizeCode(s){
+  return (s||'').trim().replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
+}
+function normalizeUrl(raw){
+  let s = (raw||'').trim();
+  if(!s) return null;
+  if(!/^https?:\/\//i.test(s)) s = 'https://' + s;
+  try{
+    const u = new URL(s);
+    if(!/^https?:$/.test(u.protocol)) return null;
+    return u.toString();
+  }catch(e){ return null; }
+}
+function shortLinkFor(code){
+  const base = window.location.origin + window.location.pathname;
+  return base + '?r=' + encodeURIComponent(code);
+}
+function qrImageFor(link){
+  return 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(link);
+}
+function fmtDate(ts){
+  if(!ts) return '';
+  try{
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleString('vi-VN');
+  }catch(e){ return ''; }
+}
+
+/* ---------- Chuyển hướng khi quét QR ---------- */
+const urlParams = new URLSearchParams(window.location.search);
+const redirectCode = sanitizeCode(urlParams.get('r'));
+
+async function handleRedirect(){
+  document.getElementById('redirecting').classList.remove('hidden');
+  try{
+    const ref = doc(db, COLLECTION, redirectCode);
+    const snap = await getDoc(ref);
+    if(snap.exists() && snap.data().target){
+      const target = snap.data().target;
+      updateDoc(ref, { clicks: increment(1), lastScanAt: serverTimestamp() }).catch(()=>{});
+      window.location.replace(target);
+    }else{
+      document.getElementById('redirLoading').classList.add('hidden');
+      document.getElementById('redirNotFound').style.display = 'block';
+    }
+  }catch(e){
+    console.error(e);
+    document.getElementById('configWarning').classList.remove('hidden');
+  }
+}
+window.goHome = function(){
+  window.location.href = window.location.origin + window.location.pathname;
+};
+
+/* ---------- Tạo QR mới ---------- */
+window.createLink = async function(){
+  const rawUrl = document.getElementById('targetUrl').value;
+  const url = normalizeUrl(rawUrl);
+  const statusEl = document.getElementById('formStatus');
+  const btn = document.getElementById('createBtn');
+  statusEl.className = ''; statusEl.textContent = '';
+
+  if(!url){
+    statusEl.className = 'err'; statusEl.textContent = 'Liên kết không hợp lệ. Vui lòng kiểm tra lại.';
+    return;
+  }
+  let code = sanitizeCode(document.getElementById('customCode').value);
+  btn.disabled = true; statusEl.textContent = 'Đang tạo…';
+
+  try{
+    if(code){
+      const existing = await getDoc(doc(db, COLLECTION, code));
+      if(existing.exists()){
+        statusEl.className = 'err'; statusEl.textContent = 'Mã "' + code + '" đã được dùng, vui lòng chọn mã khác.';
+        btn.disabled = false;
+        return;
+      }
+    }else{
+      let tries = 0;
+      do{
+        code = randCode(6);
+        tries++;
+        var existsRandom = (await getDoc(doc(db, COLLECTION, code))).exists();
+      }while(existsRandom && tries < 6);
+    }
+
+    await setDoc(doc(db, COLLECTION, code), {
+      target: url,
+      clicks: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    const link = shortLinkFor(code);
+    document.getElementById('resultQrImg').src = qrImageFor(link);
+    document.getElementById('resultLinkText').textContent = link;
+    document.getElementById('resultCode').textContent = code;
+    document.getElementById('resultCard').style.display = 'block';
+    document.getElementById('resultCard').scrollIntoView({behavior:'smooth', block:'nearest'});
+
+    document.getElementById('targetUrl').value = '';
+    document.getElementById('customCode').value = '';
+    statusEl.className = 'ok'; statusEl.textContent = 'Đã tạo QR vĩnh viễn thành công.';
+  }catch(e){
+    console.error(e);
+    statusEl.className = 'err'; statusEl.textContent = 'Có lỗi khi lưu dữ liệu. Kiểm tra Firestore rules / kết nối mạng.';
+  }
+  btn.disabled = false;
+};
+
+/* ---------- Danh sách quản lý (realtime) ---------- */
+function renderList(docs){
+  const wrap = document.getElementById('listWrap');
+  const empty = document.getElementById('emptyList');
+  document.getElementById('listCount').textContent = docs.length ? docs.length + ' mã' : '';
+  if(!docs.length){
+    wrap.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  wrap.innerHTML = docs.map(d => {
+    const link = shortLinkFor(d.id);
+    const qr = qrImageFor(link);
+    return `
+    <div class="link-item" data-code="${d.id}">
+      <div class="thumb" onclick="openQrModal('${qr}', '${link.replace(/'/g,"\\'")}')"><img src="${qr}" alt="QR ${d.id}"></div>
+      <div class="body">
+        <div class="code-row">
+          <span class="code">${d.id}</span>
+          <span class="clicks">${d.clicks||0} lượt quét</span>
+        </div>
+        <div class="edit-row">
+          <input type="text" value="${(d.target||'').replace(/"/g,'&quot;')}" data-role="target-input">
+          <button class="btn btn-secondary btn-sm" onclick="saveTarget('${d.id}', this)">Lưu</button>
+        </div>
+        <div class="save-hint"></div>
+        <div class="actions">
+          <button class="btn btn-ghost btn-sm" onclick="copyText('${link.replace(/'/g,"\\'")}', this)">Sao chép liên kết</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadQr('${qr}', '${d.id}')">Tải ảnh QR</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteLink('${d.id}')">Xoá</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.saveTarget = async function(code, btn){
+  const item = btn.closest('.link-item');
+  const input = item.querySelector('[data-role="target-input"]');
+  const hint = item.querySelector('.save-hint');
+  const url = normalizeUrl(input.value);
+  if(!url){
+    hint.className = 'save-hint err'; hint.textContent = 'Liên kết không hợp lệ.';
+    return;
+  }
+  btn.disabled = true;
+  try{
+    await updateDoc(doc(db, COLLECTION, code), { target: url, updatedAt: serverTimestamp() });
+    hint.className = 'save-hint ok'; hint.textContent = 'Đã lưu — mã QR giữ nguyên, chỉ đổi điểm đến.';
+  }catch(e){
+    console.error(e);
+    hint.className = 'save-hint err'; hint.textContent = 'Lưu thất bại.';
+  }
+  btn.disabled = false;
+};
+
+window.deleteLink = async function(code){
+  if(!confirm('Xoá mã "' + code + '"? Sau khi xoá, ai quét QR này sẽ thấy báo lỗi không tìm thấy liên kết.')) return;
+  try{
+    await deleteDoc(doc(db, COLLECTION, code));
+  }catch(e){
+    console.error(e);
+    alert('Xoá thất bại.');
+  }
+};
+
+/* ---------- Tiện ích ---------- */
+window.copyText = function(text, btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    if(btn){ const old = btn.textContent; btn.textContent = 'Đã sao chép ✓'; setTimeout(()=>btn.textContent=old, 1500); }
+  }).catch(()=>{ prompt('Sao chép liên kết:', text); });
+};
+window.downloadQr = async function(src, name){
+  try{
+    const res = await fetch(src, {mode:'cors'});
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'qr-' + (name||'link') + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  }catch(e){
+    window.open(src, '_blank');
+  }
+};
+window.openQrModal = function(src, linkText){
+  document.getElementById('qrModalImg').src = src;
+  document.getElementById('qrModalLink').textContent = linkText || '';
+  document.getElementById('qrModal').classList.add('show');
+};
+window.closeQrModal = function(){
+  document.getElementById('qrModal').classList.remove('show');
+};
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeQrModal(); });
+
+/* ---------- Khởi động ---------- */
+if(db){
+  if(redirectCode){
+    handleRedirect();
+  }else{
+    document.getElementById('app').classList.remove('hidden');
+    onSnapshot(query(collection(db, COLLECTION), orderBy('createdAt','desc')), (snap)=>{
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderList(docs);
+    }, (err)=>{
+      console.error(err);
+      document.getElementById('configWarning').classList.remove('hidden');
+    });
+  }
+}
+</script>
+</body>
+</html>
