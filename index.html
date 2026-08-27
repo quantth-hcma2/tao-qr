@@ -24,7 +24,7 @@
 
   .card{background:var(--cream);color:var(--ink);border-radius:10px;padding:24px;margin-top:22px;box-shadow:0 10px 26px rgba(0,0,0,.28);}
   label.field-label{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7a6c50;margin-bottom:6px;}
-  input[type=text], input[type=url]{width:100%;padding:13px 14px;border:1px solid #d9cdae;border-radius:6px;font-size:16px;background:#fff;color:var(--ink);}
+  input[type=text], input[type=url], input[type=email], input[type=password]{width:100%;padding:13px 14px;border:1px solid #d9cdae;border-radius:6px;font-size:16px;background:#fff;color:var(--ink);}
   input:focus{outline:2px solid var(--amber);border-color:var(--amber);}
   .field{margin-bottom:16px;}
   .field .hint{font-size:11.5px;color:#9a8d70;margin-top:5px;}
@@ -87,6 +87,20 @@
   #configWarning{position:fixed;inset:0;background:var(--navy-deep);color:var(--cream);display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;z-index:100;}
   #configWarning .box{max-width:480px;}
   #configWarning code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:4px;}
+
+  /* ---------- Đăng nhập quản trị (nhỏ, kín đáo, chỉ để mở khoá nút Xoá) ---------- */
+  #adminCorner{position:fixed;top:12px;right:14px;z-index:50;font-size:11.5px;}
+  #adminToggle{background:rgba(250,245,233,0.08);border:1px solid var(--line);color:var(--cream-dim);padding:6px 12px;border-radius:16px;cursor:pointer;font-size:11.5px;font-family:inherit;}
+  #adminToggle:hover{border-color:var(--amber);color:var(--amber);}
+  #adminWho{color:var(--cream-dim);}
+  #adminWho b{color:var(--amber);}
+  #adminLogoutBtn{margin-left:8px;background:none;border:none;color:var(--cream-dim);text-decoration:underline;cursor:pointer;font-size:11px;font-family:inherit;}
+  #adminPanel{position:absolute;top:34px;right:0;background:var(--cream);color:var(--ink);border-radius:8px;padding:16px;width:230px;box-shadow:0 10px 26px rgba(0,0,0,.35);display:none;}
+  #adminPanel.show{display:block;}
+  #adminPanel .field{margin-bottom:10px;}
+  #adminPanel input{padding:9px 10px;font-size:13.5px;}
+  #adminPanel .btn{padding:9px 12px;font-size:12.5px;width:100%;}
+  #adminLoginStatus{font-size:11.5px;margin-top:8px;min-height:14px;}
 </style>
 </head>
 <body>
@@ -96,6 +110,29 @@
   <div class="box">
     <h1 style="font-family:-apple-system,sans-serif;">Chưa kết nối được Firebase</h1>
     <p>Kiểm tra lại: (1) đã bật <b>Firestore Database</b> trong Firebase Console cho project, (2) <b>Security rules</b> đã cho phép đọc/ghi collection <code>qrlinks</code>, (3) đúng thông tin trong <code>firebaseConfig</code>. Mở Console trình duyệt (F12) để xem lỗi chi tiết.</p>
+  </div>
+</div>
+
+<!-- Góc phải trên: đăng nhập quản trị (không bắt buộc, chỉ để mở nút Xoá) -->
+<div id="adminCorner">
+  <span id="adminSignedOut">
+    <button id="adminToggle" onclick="toggleAdminPanel()">Đăng nhập quản trị</button>
+  </span>
+  <span id="adminSignedIn" class="hidden">
+    <span id="adminWho">Quản trị: <b id="adminEmail"></b></span>
+    <button id="adminLogoutBtn" onclick="doAdminLogout()">Đăng xuất</button>
+  </span>
+  <div id="adminPanel">
+    <div class="field">
+      <label class="field-label">Email</label>
+      <input type="email" id="adminEmail_input" autocomplete="username">
+    </div>
+    <div class="field">
+      <label class="field-label">Mật khẩu</label>
+      <input type="password" id="adminPassword_input" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" id="adminLoginBtn" onclick="doAdminLogin()">Đăng nhập</button>
+    <div id="adminLoginStatus"></div>
   </div>
 </div>
 
@@ -112,7 +149,7 @@
   </div>
 </div>
 
-<!-- Màn hình chính: tạo QR + danh sách quản lý -->
+<!-- Màn hình chính: tạo QR + danh sách quản lý — công khai, ai cũng dùng được, không cần đăng nhập -->
 <div id="app" class="screen hidden">
   <div class="center">
     <div class="eyebrow">QR vĩnh viễn</div>
@@ -175,6 +212,9 @@ import {
   getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, increment, serverTimestamp,
   collection, onSnapshot, query, orderBy
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 /* ============================================================
    THÔNG TIN DỰ ÁN FIREBASE
@@ -189,10 +229,15 @@ const firebaseConfig = {
   appId: "1:931729342987:web:34426640810e6813213d0e"
 };
 
-let db = null;
+/* UID của tài khoản DUY NHẤT được phép XOÁ QR.
+   Lấy ở: Firebase Console > Authentication > Users > cột "User UID" (sau khi đã Add user cho anh). */
+const ADMIN_UID = "64uoOiPrzWOZ3ELgdCfTSN57mpi2";
+
+let db = null, auth = null, currentUser = null;
 try{
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
+  auth = getAuth(app);
 }catch(e){
   console.error(e);
   document.getElementById('configWarning').classList.remove('hidden');
@@ -260,7 +305,35 @@ window.goHome = function(){
   window.location.href = window.location.origin + window.location.pathname;
 };
 
-/* ---------- Tạo QR mới ---------- */
+/* ---------- Đăng nhập quản trị (chỉ để mở khoá nút Xoá — không bắt buộc để dùng app) ---------- */
+window.toggleAdminPanel = function(){
+  document.getElementById('adminPanel').classList.toggle('show');
+};
+window.doAdminLogin = function(){
+  const email = document.getElementById('adminEmail_input').value.trim();
+  const pass = document.getElementById('adminPassword_input').value;
+  const statusEl = document.getElementById('adminLoginStatus');
+  const btn = document.getElementById('adminLoginBtn');
+  statusEl.className = ''; statusEl.textContent = '';
+  if(!email || !pass){
+    statusEl.className = 'err'; statusEl.textContent = 'Nhập đủ email và mật khẩu.';
+    return;
+  }
+  btn.disabled = true;
+  signInWithEmailAndPassword(auth, email, pass)
+    .then(()=>{ document.getElementById('adminPanel').classList.remove('show'); })
+    .catch(err=>{
+      console.error(err);
+      statusEl.className = 'err'; statusEl.textContent = 'Sai email hoặc mật khẩu.';
+    })
+    .finally(()=>{ btn.disabled = false; });
+};
+window.doAdminLogout = function(){ signOut(auth); };
+document.getElementById('adminPassword_input').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') window.doAdminLogin();
+});
+
+/* ---------- Tạo QR mới (công khai, không cần đăng nhập) ---------- */
 window.createLink = async function(){
   const rawUrl = document.getElementById('targetUrl').value;
   const url = normalizeUrl(rawUrl);
@@ -316,8 +389,10 @@ window.createLink = async function(){
   btn.disabled = false;
 };
 
-/* ---------- Danh sách quản lý (realtime) ---------- */
+/* ---------- Danh sách quản lý (realtime, công khai — nút Xoá chỉ hiện với admin) ---------- */
+let lastDocs = [];
 function renderList(docs){
+  lastDocs = docs;
   const wrap = document.getElementById('listWrap');
   const empty = document.getElementById('emptyList');
   document.getElementById('listCount').textContent = docs.length ? docs.length + ' mã' : '';
@@ -327,6 +402,7 @@ function renderList(docs){
     return;
   }
   empty.classList.add('hidden');
+  const isAdmin = !!(currentUser && ADMIN_UID && currentUser.uid === ADMIN_UID);
   wrap.innerHTML = docs.map(d => {
     const link = shortLinkFor(d.id);
     const qr = qrImageFor(link);
@@ -346,7 +422,7 @@ function renderList(docs){
         <div class="actions">
           <button class="btn btn-ghost btn-sm" onclick="copyText('${link.replace(/'/g,"\\'")}', this)">Sao chép liên kết</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadQr('${qr}', '${d.id}')">Tải ảnh QR</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteLink('${d.id}')">Xoá</button>
+          ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteLink('${d.id}')">Xoá</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -379,7 +455,7 @@ window.deleteLink = async function(code){
     await deleteDoc(doc(db, COLLECTION, code));
   }catch(e){
     console.error(e);
-    alert('Xoá thất bại.');
+    alert('Xoá thất bại. Có thể tài khoản đang đăng nhập không phải tài khoản quản trị được phép xoá.');
   }
 };
 
@@ -409,11 +485,12 @@ window.openQrModal = function(src, linkText){
 window.closeQrModal = function(){
   document.getElementById('qrModal').classList.remove('show');
 };
-document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeQrModal(); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeQrModal(); document.getElementById('adminPanel').classList.remove('show'); } });
 
 /* ---------- Khởi động ---------- */
-if(db){
+if(db && auth){
   if(redirectCode){
+    // Quét QR: luôn công khai, không cần đăng nhập.
     handleRedirect();
   }else{
     document.getElementById('app').classList.remove('hidden');
@@ -423,6 +500,19 @@ if(db){
     }, (err)=>{
       console.error(err);
       document.getElementById('configWarning').classList.remove('hidden');
+    });
+
+    onAuthStateChanged(auth, (user)=>{
+      currentUser = user;
+      if(user){
+        document.getElementById('adminSignedOut').classList.add('hidden');
+        document.getElementById('adminSignedIn').classList.remove('hidden');
+        document.getElementById('adminEmail').textContent = user.email || '';
+      }else{
+        document.getElementById('adminSignedOut').classList.remove('hidden');
+        document.getElementById('adminSignedIn').classList.add('hidden');
+      }
+      renderList(lastDocs); // vẽ lại danh sách để hiện/ẩn nút Xoá đúng theo trạng thái đăng nhập
     });
   }
 }
